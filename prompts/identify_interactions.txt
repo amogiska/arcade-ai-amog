@@ -1,0 +1,30 @@
+Analyze the following Arcade flow data chunk and identify all meaningful user interactions.
+Focus on the 'capturedEvents' and 'steps' to understand what actions the user took.
+
+For each step:
+- Look at the step type (IMAGE, VIDEO, CHAPTER)
+- For IMAGE steps: check clickContext (cssSelector, text, elementType) to understand what was clicked
+- For VIDEO steps: consider the duration and playback as an action
+- For CHAPTER steps: look at the title, subtitle, and paths (buttons/choices)
+- Use pageContext (url, title) to provide context about where the action occurred
+
+For capturedEvents:
+- Click events with coordinates
+- Typing events (user input)
+- Scrolling events (navigation)
+- Dragging events (interaction)
+
+Extract a list of clear, human-readable descriptions of each interaction.
+Each interaction should be a concise sentence describing what the user did.
+Include the page context when relevant (e.g., "Clicked 'Add to Cart' on product page").
+
+Examples of good interactions:
+- "Clicked on 'Sign In' button at the top navigation"
+- "Typed search query in the search bar"
+- "Scrolled down the product listing page"
+- "Selected 'Standard Shipping' option during checkout"
+- "Clicked 'Confirm Purchase' button"
+
+Flow data chunk:
+{flow_chunk}
+

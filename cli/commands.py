@@ -36,7 +36,15 @@ load_dotenv()
     envvar="OPENAI_API_KEY",
     help="OpenAI API key (or set OPENAI_API_KEY env variable)",
 )
-def analyze(flow_file: Path, output: Path, image_output: Path, api_key: str | None) -> None:
+@click.option(
+    "--max-steps-per-chunk",
+    type=int,
+    default=10,
+    help="Maximum number of steps to process per chunk",
+)
+def analyze(
+    flow_file: Path, output: Path, image_output: Path, api_key: str | None, max_steps_per_chunk: int
+) -> None:
     """
     Analyze an Arcade flow.json file and generate a comprehensive report.
 
@@ -57,7 +65,7 @@ def analyze(flow_file: Path, output: Path, image_output: Path, api_key: str | No
 
     # Initialize services
     flow_service = FlowService()
-    ai_service = AIService(api_key)
+    ai_service = AIService(api_key, max_steps_per_chunk=max_steps_per_chunk)
     report_service = ReportService()
 
     # Load flow data

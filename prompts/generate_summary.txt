@@ -1,0 +1,13 @@
+Analyze this user's flow and create a human-friendly narrative summary.
+
+Flow Name: {flow_name}
+Use Case: {use_case}
+
+User Interactions:
+{interactions_text}
+
+Create a compelling narrative that explains:
+1. What the user was trying to accomplish (the goal)
+2. The key actions they took
+3. A brief, engaging summary of the entire flow
+

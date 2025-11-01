@@ -1,6 +1,24 @@
 """Type definitions for Arcade flow.json data structures."""
 
+from enum import Enum
 from typing import Any, Literal, NotRequired, TypedDict
+
+
+class EventType(str, Enum):
+    """Types of captured events in a flow."""
+
+    CLICK = "click"
+    TYPING = "typing"
+    SCROLLING = "scrolling"
+    DRAGGING = "dragging"
+
+
+class StepType(str, Enum):
+    """Types of steps in a flow."""
+
+    CHAPTER = "CHAPTER"
+    IMAGE = "IMAGE"
+    VIDEO = "VIDEO"
 
 
 class Timestamp(TypedDict):
