@@ -1,8 +1,15 @@
 import json
 from pathlib import Path
-from typing import Any
 
 import click
+import openai
+from dotenv import load_dotenv
+
+from flow_types.api_models import InteractionsResponse, SummaryResponse
+from flow_types.flow_types import FlowData
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 @click.command()
@@ -42,7 +49,7 @@ def analyze(
     3. Create a social media image
     4. Output everything to a markdown report
     """
-    click.echo(f"🎮 Analyzing Arcade flow from: {flow_file}")
+    click.echo(f"Analyzing Arcade flow from: {flow_file}")
 
     # Validate API key
     if not api_key:
@@ -77,7 +84,7 @@ def analyze(
     click.echo("\n✨ Analysis complete!")
 
 
-def load_flow_data(flow_file: Path) -> dict[str, Any]:
+def load_flow_data(flow_file: Path) -> FlowData:
     """
     Load and parse the flow.json file.
 
@@ -85,14 +92,14 @@ def load_flow_data(flow_file: Path) -> dict[str, Any]:
         flow_file: Path to the flow.json file
 
     Returns:
-        Parsed flow data as a dictionary
+        Parsed flow data with type validation
     """
-    # TODO: Implement flow data loading
     with open(flow_file) as f:
-        return json.load(f)  # type: ignore[no-any-return]
+        data: FlowData = json.load(f)
+        return data
 
 
-def identify_interactions(flow_data: dict[str, Any], api_key: str) -> list[str]:
+def identify_interactions(flow_data: FlowData, api_key: str) -> list[str]:
     """
     Identify and extract user interactions from the flow data.
 
@@ -103,15 +110,60 @@ def identify_interactions(flow_data: dict[str, Any], api_key: str) -> list[str]:
     Returns:
         List of human-readable interaction descriptions
     """
-    # TODO: Implement interaction identification
-    # Hint: Look at capturedEvents, steps, etc.
-    # Use AI to understand what each action represents
+    client = openai.OpenAI(api_key=api_key)
+
+    # Prepare the flow data as a JSON string
+    flow_json = json.dumps(flow_data, indent=2)
+
+    # Create the prompt for analyzing interactions
+    prompt = f"""
+Analyze the following Arcade flow.json data and identify all meaningful user interactions.
+Focus on the 'capturedEvents' and 'steps' to understand what actions the user took.
+
+Extract a list of clear, human-readable descriptions of each interaction.
+Each interaction should be a concise sentence describing what the user did.
+
+Flow data:
+{flow_json}
+"""
+
+    # Build JSON Schema from Pydantic model with strict enforcement
+    schema = InteractionsResponse.model_json_schema()
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {
+                "role": "system",
+                "content": "You are an expert at analyzing user interaction flows and extracting meaningful actions from technical data.",
+            },
+            {"role": "user", "content": prompt},
+        ],
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "name": "interactions_response",
+                "schema": schema,
+                "strict": True,  # Hard enforcement by the API
+            },
+        },
+        temperature=0.3,
+    )
+
+    # Parse the response using Pydantic for type safety
+    content = response.choices[0].message.content
+    if content:
+        try:
+            interactions_response = InteractionsResponse.model_validate_json(content)
+            return interactions_response.interactions
+        except Exception as e:
+            click.echo(f"   Warning: Could not parse AI response: {e}")
+            return []
+
     return []
 
 
-def generate_summary(
-    flow_data: dict[str, Any], interactions: list[str], api_key: str
-) -> str:
+def generate_summary(flow_data: FlowData, interactions: list[str], api_key: str) -> str:
     """
     Generate a human-friendly summary of what the user was trying to accomplish.
 
@@ -123,13 +175,63 @@ def generate_summary(
     Returns:
         Human-friendly summary text
     """
-    # TODO: Implement summary generation
-    # Use AI to analyze the overall flow and create a narrative
-    return ""
+    client = openai.OpenAI(api_key=api_key)
+
+    # Create the prompt for summary generation
+    interactions_text = "\n".join(f"- {interaction}" for interaction in interactions)
+    prompt = f"""
+Analyze this user's flow and create a human-friendly narrative summary.
+
+Flow Name: {flow_data.get("name", "Untitled Flow")}
+Use Case: {flow_data.get("useCase", "unknown")}
+
+User Interactions:
+{interactions_text}
+
+Create a compelling narrative that explains:
+1. What the user was trying to accomplish (the goal)
+2. The key actions they took
+3. A brief, engaging summary of the entire flow
+"""
+
+    # Build JSON Schema from Pydantic model with strict enforcement
+    schema = SummaryResponse.model_json_schema()
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {
+                "role": "system",
+                "content": "You are an expert at creating engaging, human-friendly narratives from technical user interaction data.",
+            },
+            {"role": "user", "content": prompt},
+        ],
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "name": "summary_response",
+                "schema": schema,
+                "strict": True,
+            },
+        },
+        temperature=0.5,
+    )
+
+    # Parse the response using Pydantic for type safety
+    content = response.choices[0].message.content
+    if content:
+        try:
+            summary_response = SummaryResponse.model_validate_json(content)
+            return summary_response.summary
+        except Exception as e:
+            click.echo(f"   Warning: Could not parse AI response: {e}")
+            return "Unable to generate summary."
+
+    return "Unable to generate summary."
 
 
 def create_social_image(
-    flow_data: dict[str, Any], summary: str, output_path: Path, api_key: str
+    flow_data: FlowData, summary: str, output_path: Path, api_key: str
 ) -> None:
     """
     Create a creative social media image representing the flow.
@@ -157,9 +259,34 @@ def generate_report(
         image_path: Path to the generated social media image
         output_path: Where to save the markdown report
     """
-    # TODO: Implement markdown report generation
-    # Structure the report with all the analyzed data
-    pass
+    # Build the markdown content
+    markdown_lines = [
+        "# Arcade Flow Analysis Report",
+        "",
+        "## Summary",
+        "",
+        summary,
+        "",
+        "## User Interactions",
+        "",
+    ]
+
+    # Add interactions as a numbered list
+    for i, interaction in enumerate(interactions, 1):
+        markdown_lines.append(f"{i}. {interaction}")
+
+    markdown_lines.extend(
+        [
+            "",
+            "## Social Media Image",
+            "",
+            f"![Flow Visualization]({image_path})",
+            "",
+        ]
+    )
+
+    # Write to file
+    output_path.write_text("\n".join(markdown_lines))
 
 
 if __name__ == "__main__":
