@@ -42,8 +42,26 @@ load_dotenv()
     default=10,
     help="Maximum number of steps to process per chunk",
 )
+@click.option(
+    "--chunk-processing-model",
+    envvar="CHUNK_PROCESSING_MODEL",
+    default="gpt-4o-mini",
+    help="OpenAI model for chunk processing (or set CHUNK_PROCESSING_MODEL env variable)",
+)
+@click.option(
+    "--summary-model",
+    envvar="SUMMARY_MODEL",
+    default="gpt-4o",
+    help="OpenAI model for summary generation (or set SUMMARY_MODEL env variable)",
+)
 def analyze(
-    flow_file: Path, output: Path, image_output: Path, api_key: str | None, max_steps_per_chunk: int
+    flow_file: Path,
+    output: Path,
+    image_output: Path,
+    api_key: str | None,
+    max_steps_per_chunk: int,
+    chunk_processing_model: str,
+    summary_model: str,
 ) -> None:
     """
     Analyze an Arcade flow.json file and generate a comprehensive report.
@@ -65,8 +83,16 @@ def analyze(
 
     # Initialize services
     flow_service = FlowService()
-    ai_service = AIService(api_key, max_steps_per_chunk=max_steps_per_chunk)
+    ai_service = AIService(
+        api_key,
+        max_steps_per_chunk=max_steps_per_chunk,
+        chunk_processing_model=chunk_processing_model,
+        summary_model=summary_model,
+    )
     report_service = ReportService()
+
+    # Display configuration
+    click.echo(f"🤖 Models: chunk={chunk_processing_model}, summary={summary_model}")
 
     # Load flow data
     click.echo("📖 Loading flow data...")

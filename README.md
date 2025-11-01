@@ -11,21 +11,22 @@ CLI tool to analyze Arcade flow recordings and generate comprehensive reports.
    
    This will install both production dependencies (click, openai) and development dependencies (ruff, mypy).
 
-2. **Set up your API key:**
+2. **Set up your environment:**
    
-   Create a `.env` file (don't commit this!):
+   Copy the example environment file and configure it:
    ```bash
-   echo "OPENAI_API_KEY=your_api_key_here" > .env
+   cp .env.example .env
    ```
    
-   Then load it:
+   Edit `.env` and add your OpenAI API key:
    ```bash
-   export $(cat .env | xargs)
+   OPENAI_API_KEY=your_api_key_here
    ```
    
-   Or set it directly in your shell:
+   The `.env` file is automatically loaded by the CLI tool. You can also customize the AI models used:
    ```bash
-   export OPENAI_API_KEY=your_api_key_here
+   CHUNK_PROCESSING_MODEL=gpt-4o-mini  # Model for processing individual chunks
+   SUMMARY_MODEL=gpt-4o                # Model for generating summaries
    ```
 
 ## Usage
@@ -46,7 +47,34 @@ uv run main.py --flow-file path/to/flow.json --output my_report.md --image-outpu
 - `-o, --output PATH`: Output markdown file path (default: `report.md`)
 - `--image-output PATH`: Output path for the generated social media image (default: `flow_image.png`)
 - `--api-key TEXT`: OpenAI API key (or set `OPENAI_API_KEY` environment variable)
+- `--max-steps-per-chunk INT`: Maximum steps to process per chunk (default: 10)
+- `--chunk-processing-model TEXT`: Model for chunk processing (default: `gpt-4o-mini`, or set `CHUNK_PROCESSING_MODEL` env var)
+- `--summary-model TEXT`: Model for summary generation (default: `gpt-4o`, or set `SUMMARY_MODEL` env var)
 - `--help`: Show help message
+
+### Model Configuration
+
+The tool uses different OpenAI models for different tasks:
+
+- **Chunk Processing Model** (`gpt-4o-mini` by default): Used for analyzing individual flow chunks. Optimized for speed and cost.
+- **Summary Model** (`gpt-4o` by default): Used for generating creative summaries. Optimized for quality and narrative generation.
+
+You can configure these via environment variables or CLI options:
+
+```bash
+# Via environment variables
+export CHUNK_PROCESSING_MODEL=gpt-4o-mini
+export SUMMARY_MODEL=gpt-4o
+
+# Via CLI options
+uv run main.py --chunk-processing-model gpt-4o --summary-model gpt-4o-mini
+```
+
+**Available Models:**
+- `gpt-4o` - Latest GPT-4 Optimized (best quality, slower, more expensive)
+- `gpt-4o-mini` - Smaller GPT-4 Optimized (good quality, faster, cost-effective)
+- `gpt-4-turbo` - GPT-4 Turbo (high quality, balanced)
+- `gpt-3.5-turbo` - GPT-3.5 Turbo (fastest, cheapest, lower quality)
 
 ## Development
 

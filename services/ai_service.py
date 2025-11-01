@@ -15,23 +15,32 @@ class AIService:
 
     PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
 
-    # Model configuration - can be customized for different tasks
-    # Use faster/cheaper models for bulk processing, better models for complex tasks
-    MODELS = {
-        "chunk_processing": "gpt-4o-mini",  # Fast and cost-effective for individual chunks
-        "summary": "gpt-4o",  # More creative and nuanced narrative generation
-    }
+    # Default model configuration
+    DEFAULT_CHUNK_PROCESSING_MODEL = "gpt-5-mini"
+    DEFAULT_SUMMARY_MODEL = "gpt-5"
 
-    def __init__(self, api_key: str, max_steps_per_chunk: int = 10):
+    def __init__(
+        self,
+        api_key: str,
+        max_steps_per_chunk: int = 10,
+        chunk_processing_model: str | None = None,
+        summary_model: str | None = None,
+    ):
         """
         Initialize the AI service with an OpenAI API key.
 
         Args:
             api_key: OpenAI API key
             max_steps_per_chunk: Maximum number of steps to process per chunk (default: 10)
+            chunk_processing_model: Model for processing individual chunks (default: gpt-4o-mini)
+            summary_model: Model for generating summaries (default: gpt-4o)
         """
         self.client = openai.OpenAI(api_key=api_key)
         self.max_steps_per_chunk = max_steps_per_chunk
+
+        # Use provided models or fall back to defaults
+        self.chunk_processing_model = chunk_processing_model or self.DEFAULT_CHUNK_PROCESSING_MODEL
+        self.summary_model = summary_model or self.DEFAULT_SUMMARY_MODEL
 
     def _load_prompt(self, prompt_name: str) -> str:
         """
@@ -67,9 +76,7 @@ class AIService:
         # If the flow is small enough, return it as a single chunk
         if len(steps) <= self.max_steps_per_chunk:
             # Create a single chunk with all data
-            chunk_info = ChunkInfo(
-                chunk_index=0, total_chunks=1, steps_in_chunk=len(steps)
-            )
+            chunk_info = ChunkInfo(chunk_index=0, total_chunks=1, steps_in_chunk=len(steps))
             return [
                 FlowChunk(
                     name=flow_data.get("name", "Untitled Flow"),
@@ -83,9 +90,7 @@ class AIService:
             ]
 
         chunks: list[FlowChunk] = []
-        total_chunks = (
-            len(steps) + self.max_steps_per_chunk - 1
-        ) // self.max_steps_per_chunk
+        total_chunks = (len(steps) + self.max_steps_per_chunk - 1) // self.max_steps_per_chunk
 
         # Create metadata that will be included in each chunk
         metadata = FlowMetadata(
@@ -121,9 +126,7 @@ class AIService:
 
         return chunks
 
-    def _process_chunk(
-        self, chunk: FlowChunk, chunk_index: int, total_chunks: int
-    ) -> list[str]:
+    def _process_chunk(self, chunk: FlowChunk, chunk_index: int, total_chunks: int) -> list[str]:
         """
         Process a single chunk of flow data to extract interactions.
 
@@ -147,7 +150,7 @@ class AIService:
 
         try:
             response = self.client.chat.completions.create(
-                model=self.MODELS["chunk_processing"],
+                model=self.chunk_processing_model,
                 messages=[
                     {
                         "role": "system",
@@ -168,15 +171,11 @@ class AIService:
 
             content = response.choices[0].message.content
             if content:
-                interactions_response = InteractionsResponse.model_validate_json(
-                    content
-                )
+                interactions_response = InteractionsResponse.model_validate_json(content)
                 return interactions_response.interactions
 
         except Exception as e:
-            click.echo(
-                f"   Warning: Error processing chunk {chunk_index + 1}/{total_chunks}: {e}"
-            )
+            click.echo(f"   Warning: Error processing chunk {chunk_index + 1}/{total_chunks}: {e}")
 
         return []
 
@@ -227,9 +226,7 @@ class AIService:
         prompt_template = self._load_prompt("generate_summary")
 
         # Create the prompt for summary generation
-        interactions_text = "\n".join(
-            f"- {interaction}" for interaction in interactions
-        )
+        interactions_text = "\n".join(f"- {interaction}" for interaction in interactions)
         prompt = prompt_template.format(
             flow_name=flow_data.get("name", "Untitled Flow"),
             use_case=flow_data.get("useCase", "unknown"),
@@ -240,7 +237,7 @@ class AIService:
         schema = SummaryResponse.model_json_schema()
 
         response = self.client.chat.completions.create(
-            model=self.MODELS["summary"],
+            model=self.summary_model,
             messages=[
                 {
                     "role": "system",
@@ -271,9 +268,7 @@ class AIService:
 
         return "Unable to generate summary."
 
-    def create_social_image(
-        self, flow_data: FlowData, summary: str, output_path: Path
-    ) -> None:
+    def create_social_image(self, flow_data: FlowData, summary: str, output_path: Path) -> None:
         """
         Create a creative social media image representing the flow.
 
