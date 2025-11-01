@@ -74,15 +74,28 @@ This will:
 
 Configuration is in `pyproject.toml`.
 
-## Implementation Notes
+## Architecture
 
-The CLI is structured with the following functions to implement:
+The project follows a modular, service-oriented architecture:
 
-1. **`load_flow_data()`**: Loads and parses the flow.json file
-2. **`identify_interactions()`**: Analyzes flow data to identify user actions
-3. **`generate_summary()`**: Creates a human-friendly summary using AI
-4. **`create_social_image()`**: Generates a social media image using DALL-E
-5. **`generate_report()`**: Compiles everything into a markdown report
+```
+├── main.py                 # Entry point
+├── cli/                    # Command-line interface
+│   └── commands.py         # CLI commands and orchestration
+├── services/               # Business logic
+│   ├── flow_service.py     # Flow data loading
+│   ├── ai_service.py       # AI-powered analysis
+│   └── report_service.py   # Report generation
+└── flow_types/             # Type definitions
+    ├── api_models.py       # Pydantic models
+    └── flow_types.py       # Flow data types
+```
+
+### Key Services
+
+1. **`FlowService`**: Loads and parses flow.json files
+2. **`AIService`**: AI-powered analysis (interactions, summaries, images)
+3. **`ReportService`**: Generates markdown reports
 
 ## Security
 

@@ -22,6 +22,4 @@ class SummaryResponse(BaseModel):
         description="A human-friendly narrative summary of what the user accomplished in the flow"
     )
     key_actions: list[str] = Field(description="List of key actions taken by the user")
-    goal: str = Field(
-        description="The primary goal or objective the user was trying to accomplish"
-    )
+    goal: str = Field(description="The primary goal or objective the user was trying to accomplish")

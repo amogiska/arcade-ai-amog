@@ -15,7 +15,7 @@ echo ""
 
 # Run mypy type checker
 echo "🔎 Running mypy type checker..."
-uv run mypy main.py
+uv run mypy .
 
 echo ""
 echo "✅ All linting checks passed!"
