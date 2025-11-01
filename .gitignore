@@ -5,6 +5,19 @@ build/
 dist/
 wheels/
 *.egg-info
+.mypy_cache/
+.ruff_cache/
 
 # Virtual environments
 .venv
+
+# API keys and environment variables
+.env
+*.env
+
+# Generated output files
+report.md
+flow_image.png
+*.png
+*.jpg
+*.jpeg
