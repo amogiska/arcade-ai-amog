@@ -1,24 +1,6 @@
 """Type definitions for Arcade flow.json data structures."""
 
-from enum import Enum
 from typing import Any, Literal, NotRequired, TypedDict
-
-
-class EventType(str, Enum):
-    """Types of captured events in a flow."""
-
-    CLICK = "click"
-    TYPING = "typing"
-    SCROLLING = "scrolling"
-    DRAGGING = "dragging"
-
-
-class StepType(str, Enum):
-    """Types of steps in a flow."""
-
-    CHAPTER = "CHAPTER"
-    IMAGE = "IMAGE"
-    VIDEO = "VIDEO"
 
 
 class Timestamp(TypedDict):
@@ -56,30 +38,10 @@ class ClickEvent(TypedDict):
     frameId: int
 
 
-class TypingEvent(TypedDict):
-    """Typing event captured during flow."""
+class TimeRangeEvent(TypedDict):
+    """Base for time-range events (typing, scrolling, dragging)."""
 
-    type: Literal["typing"]
-    startTimeMs: int
-    endTimeMs: int
-    tabId: int
-    frameId: int
-
-
-class ScrollingEvent(TypedDict):
-    """Scrolling event captured during flow."""
-
-    type: Literal["scrolling"]
-    startTimeMs: int
-    endTimeMs: int
-    tabId: int
-    frameId: int
-
-
-class DraggingEvent(TypedDict):
-    """Dragging event captured during flow."""
-
-    type: Literal["dragging"]
+    type: Literal["typing", "scrolling", "dragging"]
     startTimeMs: int
     endTimeMs: int
     tabId: int
@@ -87,7 +49,7 @@ class DraggingEvent(TypedDict):
 
 
 # Union type for all captured events
-CapturedEvent = ClickEvent | TypingEvent | ScrollingEvent | DraggingEvent
+CapturedEvent = ClickEvent | TimeRangeEvent
 
 
 class AIContext(TypedDict):

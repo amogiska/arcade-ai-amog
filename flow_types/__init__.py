@@ -6,15 +6,13 @@ from flow_types.flow_types import (
     ChapterStep,
     ClickContext,
     ClickEvent,
-    DraggingEvent,
     FlowData,
     Hotspot,
     ImageStep,
     PageContext,
     PanAndZoom,
-    ScrollingEvent,
     Step,
-    TypingEvent,
+    TimeRangeEvent,
     VideoStep,
 )
 
@@ -22,9 +20,7 @@ __all__ = [
     # Flow data types
     "CapturedEvent",
     "ClickEvent",
-    "TypingEvent",
-    "ScrollingEvent",
-    "DraggingEvent",
+    "TimeRangeEvent",
     "Step",
     "ChapterStep",
     "ImageStep",
