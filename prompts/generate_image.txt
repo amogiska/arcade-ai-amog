@@ -1,16 +1,22 @@
-Design a colorful, glassmorphic social image (OpenAI aesthetic).
+Design a thumb-stopping social graphic (poster-like), bold and colorful. Keep on-image copy ultra-short.
 
 Content
 - Title: {flow_name}
-- Tag: {use_case}
 - Subline: {summary}
+- Limits: Title ≤ 8 words. Subline ≤ 12 words. No extra text, captions, logos, or watermarks.
 
-Style
-- Vibrant gradient background (cool→warm), soft glow
-- Frosted-glass card(s) with 12–16px blur, 1px inner highlight, subtle shadow
-- Rounded geometry, playful blobs, minimal icons; no photos
-- High contrast typography; large, clean sans-serif
+Art Direction
+- Palette: flat, vivid colors (3–4 max). No gradients.
+- Style: modern, energetic, crisp vector feel.
+- Composition: one dominant hero card; 1–2 dynamic accent shapes for motion.
+- Details: micro-noise/halftone (very light), sharp edges, subtle shadow for lift.
+- Icon: optional single line icon; no photos or UI mockups.
+- Type: huge high-contrast sans; tight tracking; strong hierarchy.
 
 Layout
-- Title dominant on frosted card; tag as pill; subline short
-- Clear breathing room; asymmetric balance; strong focal point
+- Tag pill removed.
+- Title on the hero card (1–2 lines). Subline directly below (1 line preferred).
+- 10–12% safe margins; generous negative space; zero clutter.
+
+Output
+- PNG 2048×2048 primary; also 1920×1080 and 2048×2560.

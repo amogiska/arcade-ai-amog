@@ -2,7 +2,7 @@
 
 CLI tool to analyze Arcade flow recordings and generate comprehensive report and social media image.
 
-**Example output files from a sample run (`report.md` and `flow_image.png`) are included in this repository.**
+**Example output files from a sample run ([`report.md`](report.md) and [`flow_image.png`](flow_image.png)) are included in this repository.**
 
 ## Approach
 

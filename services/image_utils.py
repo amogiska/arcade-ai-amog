@@ -7,20 +7,19 @@ from typing import Any
 import click
 
 
-def build_image_prompt(template: str, flow_name: str, use_case: str, summary: str) -> str:
+def build_image_prompt(template: str, flow_name: str, summary: str) -> str:
     """
     Build a descriptive prompt for social media image generation.
 
     Args:
         template: The prompt template string
         flow_name: Name of the flow
-        use_case: Use case category
         summary: Generated summary text
 
     Returns:
         Formatted prompt for image generation
     """
-    return template.format(flow_name=flow_name, use_case=use_case, summary=summary)
+    return template.format(flow_name=flow_name, summary=summary)
 
 
 def save_generated_image(

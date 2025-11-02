@@ -15,10 +15,3 @@ wheels/
 .env
 *.env
 !.env.example
-
-# Generated output files
-report.md
-flow_image.png
-*.png
-*.jpg
-*.jpeg
