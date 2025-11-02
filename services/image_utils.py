@@ -7,9 +7,7 @@ from typing import Any
 import click
 
 
-def build_image_prompt(
-    template: str, flow_name: str, use_case: str, summary: str
-) -> str:
+def build_image_prompt(template: str, flow_name: str, use_case: str, summary: str) -> str:
     """
     Build a descriptive prompt for social media image generation.
 

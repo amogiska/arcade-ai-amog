@@ -60,6 +60,12 @@ load_dotenv()
     default="gpt-image-1",
     help="OpenAI model for image generation (only gpt-image-1 is supported, or set IMAGE_MODEL env variable)",
 )
+@click.option(
+    "--max-interactions-for-summary",
+    type=int,
+    default=50,
+    help="Maximum number of interactions to use for summary generation (default: 50)",
+)
 def analyze(
     flow_file: Path,
     output: Path,
@@ -69,6 +75,7 @@ def analyze(
     chunk_processing_model: str,
     summary_model: str,
     image_model: str,
+    max_interactions_for_summary: int,
 ) -> None:
     """
     Analyze an Arcade flow.json file and generate a comprehensive report.
@@ -96,6 +103,7 @@ def analyze(
         chunk_processing_model=chunk_processing_model,
         summary_model=summary_model,
         image_model=image_model,
+        max_interactions_for_summary=max_interactions_for_summary,
     )
     report_service = ReportService()
 
@@ -110,12 +118,20 @@ def analyze(
 
     # Step 1: Identify user interactions
     click.echo("\n🔍 Step 1: Identifying user interactions...")
-    interactions = ai_service.identify_interactions(flow_data)
-    click.echo(f"   Found {len(interactions)} interactions")
+    all_interactions = ai_service.identify_interactions(flow_data)
+    click.echo(f"   Found {len(all_interactions)} interactions")
 
     # Step 2: Generate summary
     click.echo("\n📝 Step 2: Generating human-friendly summary...")
-    summary = ai_service.generate_summary(flow_data, interactions)
+    summary, interactions_for_summary = ai_service.generate_summary(
+        flow_data, all_interactions
+    )
+
+    # Show if interactions were filtered
+    if len(interactions_for_summary) < len(all_interactions):
+        click.echo(
+            f"   Used top {len(interactions_for_summary)} most meaningful interactions for summary"
+        )
 
     # Step 3: Create social media image
     click.echo("\n🎨 Step 3: Creating social media image...")
@@ -123,7 +139,12 @@ def analyze(
 
     # Step 4: Generate markdown report
     click.echo("\n📄 Step 4: Generating markdown report...")
-    report_service.generate_report(interactions, summary, image_output, output)
+    report_service.generate_report(
+        all_interactions,
+        summary,
+        image_output,
+        output,
+    )
     click.echo(f"   Report saved to: {output}")
 
     click.echo("\n✨ Analysis complete!")

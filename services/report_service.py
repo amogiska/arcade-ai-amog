@@ -8,13 +8,16 @@ class ReportService:
 
     @staticmethod
     def generate_report(
-        interactions: list[str], summary: str, image_path: Path, output_path: Path
+        interactions: list[str],
+        summary: str,
+        image_path: Path,
+        output_path: Path,
     ) -> None:
         """
         Generate the final markdown report.
 
         Args:
-            interactions: List of identified interactions
+            interactions: List of all identified interactions
             summary: The generated summary
             image_path: Path to the generated social media image
             output_path: Where to save the markdown report

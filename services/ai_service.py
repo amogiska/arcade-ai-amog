@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import click
+import numpy as np
 import openai
 
 from flow_types.api_models import InteractionsResponse, SummaryResponse
@@ -28,6 +29,7 @@ class AIService:
         chunk_processing_model: str | None = None,
         summary_model: str | None = None,
         image_model: str | None = None,
+        max_interactions_for_summary: int = 50,
     ):
         """
         Initialize the AI service with an OpenAI API key.
@@ -38,12 +40,14 @@ class AIService:
             chunk_processing_model: Model for processing individual chunks (default: gpt-4o-mini)
             summary_model: Model for generating summaries (default: gpt-4o)
             image_model: Model for generating images (default: gpt-image-1, only gpt-image-1 is supported)
+            max_interactions_for_summary: Maximum number of interactions to use for summary generation (default: 50)
 
         Raises:
             ValueError: If image_model is not 'gpt-image-1'
         """
         self.client = openai.OpenAI(api_key=api_key)
         self.max_steps_per_chunk = max_steps_per_chunk
+        self.max_interactions_for_summary = max_interactions_for_summary
 
         # Use provided models or fall back to defaults
         self.chunk_processing_model = (
@@ -238,17 +242,210 @@ class AIService:
 
         return all_interactions
 
-    def generate_summary(self, flow_data: FlowData, interactions: list[str]) -> str:
+    def _embedding_based_filter_interactions(
+        self,
+        interactions: list[str],
+        target_count: int,
+        flow_data: FlowData | None = None,
+    ) -> list[str]:
+        """
+        Use AI embeddings to semantically rank and filter interactions.
+
+        Creates a natural language query describing what we're looking for
+        (important, meaningful actions), then finds interactions most similar
+        to that query using semantic embeddings.
+
+        Args:
+            interactions: List of all interactions
+            target_count: Number of interactions to keep
+            flow_data: Optional flow data to incorporate context
+
+        Returns:
+            Top N interactions by semantic relevance to "importance"
+        """
+        # Build query using concrete action examples (works better than meta-descriptions)
+        query_parts = [
+            "User completed tasks. User submitted forms. User made decisions. "
+            "User entered data. User confirmed actions. User achieved goals. "
+            "User created something. User configured settings. User uploaded files. "
+            "User saved changes. User published content. User finalized work."
+        ]
+
+        # Optionally add flow-specific context for better targeting
+        if flow_data:
+            flow_name = flow_data.get("name", "")
+            use_case = flow_data.get("useCase", "")
+            description = flow_data.get("description", "")
+
+            if flow_name and flow_name != "Untitled Flow":
+                query_parts.append(f"User actions in {flow_name}.")
+            if use_case and use_case not in ["unknown", "other"]:
+                query_parts.append(f"Actions related to {use_case}.")
+            if description:
+                # Take first sentence of description
+                first_sentence = description.split(".")[0] + "."
+                query_parts.append(f"User {first_sentence}")
+
+        query_text = " ".join(query_parts)
+
+        try:
+            # Embed query + all interactions in one API call
+            all_texts = [query_text] + interactions
+            response = self.client.embeddings.create(
+                model="text-embedding-3-small", input=all_texts
+            )
+
+            # Extract embeddings
+            query_embedding = np.array(response.data[0].embedding)
+            interaction_embeddings = np.array([d.embedding for d in response.data[1:]])
+
+            # Calculate cosine similarity to query
+            def cosine_similarity(a: "np.ndarray", b: "np.ndarray") -> float:
+                return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
+
+            similarities = np.array(
+                [
+                    cosine_similarity(emb, query_embedding)
+                    for emb in interaction_embeddings
+                ]
+            )
+
+            # Apply Maximal Marginal Relevance for diversity
+            selected_indices = self._mmr_select_indices(
+                interaction_embeddings, similarities, target_count
+            )
+
+            return [interactions[i] for i in selected_indices]
+
+        except Exception as e:
+            click.echo(f"   Warning: Embeddings failed ({e}), using fallback")
+            # Fallback: just return first N
+            return interactions[:target_count]
+
+    def _mmr_select_indices(
+        self,
+        embeddings: "np.ndarray",
+        importance_scores: "np.ndarray",
+        target_count: int,
+        lambda_param: float = 0.7,
+    ) -> list[int]:
+        """
+        Maximal Marginal Relevance: Select diverse + important interactions.
+
+        Balances:
+        - Importance: High similarity to query
+        - Diversity: Low similarity to already selected
+
+        Args:
+            embeddings: Numpy array of interaction embeddings
+            importance_scores: Similarity scores to query
+            target_count: Number to select
+            lambda_param: Balance (0.7 = 70% importance, 30% diversity)
+
+        Returns:
+            Indices of selected interactions
+        """
+        selected_indices: list[int] = []
+        remaining_indices = list(range(len(embeddings)))
+
+        # Select most important first
+        first_idx = int(np.argmax(importance_scores))
+        selected_indices.append(first_idx)
+        remaining_indices.remove(first_idx)
+
+        # Iteratively select interactions balancing importance + diversity
+        while len(selected_indices) < target_count and remaining_indices:
+            best_score = -1.0
+            best_idx: int | None = None
+
+            for idx in remaining_indices:
+                # Importance component
+                importance = importance_scores[idx]
+
+                # Diversity component: distance from already selected
+                max_similarity_to_selected = max(
+                    np.dot(embeddings[idx], embeddings[sel_idx])
+                    / (
+                        np.linalg.norm(embeddings[idx])
+                        * np.linalg.norm(embeddings[sel_idx])
+                    )
+                    for sel_idx in selected_indices
+                )
+                diversity = 1 - max_similarity_to_selected
+
+                # MMR score
+                mmr_score = lambda_param * importance + (1 - lambda_param) * diversity
+
+                if mmr_score > best_score:
+                    best_score = mmr_score
+                    best_idx = idx
+
+            if best_idx is not None:
+                selected_indices.append(best_idx)
+                remaining_indices.remove(best_idx)
+            else:
+                break
+
+        return selected_indices
+
+    def _rank_interactions(
+        self, flow_data: FlowData, interactions: list[str], max_interactions: int
+    ) -> list[str]:
+        """
+        Rank interactions by importance using AI embeddings + MMR.
+
+        Uses semantic embeddings to understand importance and MMR to ensure diversity.
+        No LLM calls needed - faster, cheaper, and scales infinitely.
+
+        Args:
+            flow_data: The parsed flow.json data
+            interactions: List of all identified interactions
+            max_interactions: Maximum number of interactions to return
+
+        Returns:
+            List of the most meaningful interactions, limited to max_interactions
+        """
+        if len(interactions) <= max_interactions:
+            return interactions
+
+        original_count = len(interactions)
+        click.echo(
+            f"   Ranking {original_count} interactions using AI embeddings + MMR "
+            f"to find top {max_interactions}..."
+        )
+
+        # Use embeddings + MMR for all ranking (no LLM needed)
+        ranked_interactions = self._embedding_based_filter_interactions(
+            interactions, max_interactions, flow_data
+        )
+
+        click.echo(
+            f"   Selected {len(ranked_interactions)} most meaningful interactions"
+        )
+        return ranked_interactions
+
+    def generate_summary(
+        self, flow_data: FlowData, interactions: list[str]
+    ) -> tuple[str, list[str]]:
         """
         Generate a human-friendly summary of what the user was trying to accomplish.
+
+        If there are too many interactions, they will be ranked and filtered to the most
+        meaningful ones before generating the summary.
 
         Args:
             flow_data: The parsed flow.json data
             interactions: List of identified interactions
 
         Returns:
-            Human-friendly summary text
+            Tuple of (summary text, interactions used for summary - may be filtered)
         """
+        # Rank interactions if we have too many for the summary context
+        if len(interactions) > self.max_interactions_for_summary:
+            interactions = self._rank_interactions(
+                flow_data, interactions, self.max_interactions_for_summary
+            )
+
         # Load the prompt template
         prompt_template = self._load_prompt("generate_summary")
 
@@ -290,12 +487,12 @@ class AIService:
         if content:
             try:
                 summary_response = SummaryResponse.model_validate_json(content)
-                return summary_response.summary
+                return summary_response.summary, interactions
             except Exception as e:
                 click.echo(f"   Warning: Could not parse AI response: {e}")
-                return "Unable to generate summary."
+                return "Unable to generate summary.", interactions
 
-        return "Unable to generate summary."
+        return "Unable to generate summary.", interactions
 
     def create_social_image(
         self, flow_data: FlowData, summary: str, output_path: Path
