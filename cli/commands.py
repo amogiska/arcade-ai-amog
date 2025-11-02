@@ -61,6 +61,12 @@ load_dotenv()
     help="OpenAI model for image generation (only gpt-image-1 is supported, or set IMAGE_MODEL env variable)",
 )
 @click.option(
+    "--embedding-model",
+    envvar="EMBEDDING_MODEL",
+    default="text-embedding-3-small",
+    help="OpenAI model for embeddings (default: text-embedding-3-small, or set EMBEDDING_MODEL env variable)",
+)
+@click.option(
     "--max-interactions-for-summary",
     type=int,
     default=50,
@@ -75,6 +81,7 @@ def analyze(
     chunk_processing_model: str,
     summary_model: str,
     image_model: str,
+    embedding_model: str,
     max_interactions_for_summary: int,
 ) -> None:
     """
@@ -103,13 +110,15 @@ def analyze(
         chunk_processing_model=chunk_processing_model,
         summary_model=summary_model,
         image_model=image_model,
+        embedding_model=embedding_model,
         max_interactions_for_summary=max_interactions_for_summary,
     )
     report_service = ReportService()
 
     # Display configuration
     click.echo(
-        f"🤖 Models: chunk={chunk_processing_model}, summary={summary_model}, image={image_model}"
+        f"🤖 Models: chunk={chunk_processing_model}, summary={summary_model}, "
+        f"image={image_model}, embedding={embedding_model}"
     )
 
     # Load flow data
@@ -123,9 +132,7 @@ def analyze(
 
     # Step 2: Generate summary
     click.echo("\n📝 Step 2: Generating human-friendly summary...")
-    summary, interactions_for_summary = ai_service.generate_summary(
-        flow_data, all_interactions
-    )
+    summary, interactions_for_summary = ai_service.generate_summary(flow_data, all_interactions)
 
     # Show if interactions were filtered
     if len(interactions_for_summary) < len(all_interactions):

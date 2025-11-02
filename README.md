@@ -2,6 +2,18 @@
 
 CLI tool to analyze Arcade flow recordings and generate comprehensive reports.
 
+## Approach
+
+This tool achieves three key goals while maintaining scalability:
+
+1. **Identify User Interactions** - Extract meaningful actions from flow recordings
+2. **Generate Human-Friendly Summaries** - Create narrative summaries of user journeys
+3. **Create Social Media Images** - Generate visual representations for sharing
+
+**Scalability Features:**
+- **Intelligent Chunking** - Processes large flows in manageable chunks to avoid context limits
+- **Embeddings-Based Ranking** - Uses semantic embeddings (text-embedding-3-small) + MMR algorithm to select the most meaningful interactions for summary generation, enabling the system to handle flows with hundreds or thousands of interactions
+
 ## Setup
 
 1. **Install dependencies:**
@@ -9,7 +21,7 @@ CLI tool to analyze Arcade flow recordings and generate comprehensive reports.
    uv sync
    ```
    
-   This will install both production dependencies (click, openai) and development dependencies (ruff, mypy).
+   This will install both production dependencies (click, openai, numpy) and development dependencies (ruff, mypy).
 
 2. **Set up your environment:**
    
@@ -23,11 +35,7 @@ CLI tool to analyze Arcade flow recordings and generate comprehensive reports.
    OPENAI_API_KEY=your_api_key_here
    ```
    
-   The `.env` file is automatically loaded by the CLI tool. You can also customize the AI models used:
-   ```bash
-   CHUNK_PROCESSING_MODEL=gpt-4o-mini  # Model for processing individual chunks
-   SUMMARY_MODEL=gpt-4o                # Model for generating summaries
-   ```
+   See [Model Configuration](#model-configuration) below for customizing AI models.
 
 ## Usage
 
@@ -47,34 +55,39 @@ uv run main.py --flow-file path/to/flow.json --output my_report.md --image-outpu
 - `-o, --output PATH`: Output markdown file path (default: `report.md`)
 - `--image-output PATH`: Output path for the generated social media image (default: `flow_image.png`)
 - `--api-key TEXT`: OpenAI API key (or set `OPENAI_API_KEY` environment variable)
-- `--max-steps-per-chunk INT`: Maximum steps to process per chunk (default: 10)
-- `--chunk-processing-model TEXT`: Model for chunk processing (default: `gpt-4o-mini`, or set `CHUNK_PROCESSING_MODEL` env var)
-- `--summary-model TEXT`: Model for summary generation (default: `gpt-4o`, or set `SUMMARY_MODEL` env var)
+- `--max-steps-per-chunk INT`: Maximum steps to process per chunk (default: `10`)
+- `--max-interactions-for-summary INT`: Maximum interactions to use for summary generation (default: `50`)
+- `--chunk-processing-model TEXT`: Model for chunk processing (default: `gpt-5-mini`)
+- `--summary-model TEXT`: Model for summary generation (default: `gpt-5`)
+- `--image-model TEXT`: Model for image generation (default: `gpt-image-1`, only gpt-image-1 is supported)
+- `--embedding-model TEXT`: Model for embeddings (default: `text-embedding-3-small`)
 - `--help`: Show help message
 
-### Model Configuration
+## Model Configuration
 
 The tool uses different OpenAI models for different tasks:
 
-- **Chunk Processing Model** (`gpt-4o-mini` by default): Used for analyzing individual flow chunks. Optimized for speed and cost.
-- **Summary Model** (`gpt-4o` by default): Used for generating creative summaries. Optimized for quality and narrative generation.
+| Model | Default | Purpose |
+|-------|---------|---------|
+| Chunk Processing | `gpt-5-mini` | Analyzing individual flow chunks and extracting interactions |
+| Summary | `gpt-5` | Generating creative, human-friendly summaries |
+| Image | `gpt-image-1` | Generating social media images (only supported option) |
+| Embedding | `text-embedding-3-small` | Semantic ranking of interactions for summary generation |
 
-You can configure these via environment variables or CLI options:
+Configure via environment variables (in `.env` file) or CLI options:
 
 ```bash
-# Via environment variables
-export CHUNK_PROCESSING_MODEL=gpt-4o-mini
-export SUMMARY_MODEL=gpt-4o
+# Environment variables
+CHUNK_PROCESSING_MODEL=gpt-5-mini
+SUMMARY_MODEL=gpt-5
+IMAGE_MODEL=gpt-image-1
+EMBEDDING_MODEL=text-embedding-3-small
 
-# Via CLI options
-uv run main.py --chunk-processing-model gpt-4o --summary-model gpt-4o-mini
+# CLI options
+uv run main.py --chunk-processing-model gpt-5 --embedding-model text-embedding-3-large
 ```
 
-**Available Models:**
-- `gpt-4o` - Latest GPT-4 Optimized (best quality, slower, more expensive)
-- `gpt-4o-mini` - Smaller GPT-4 Optimized (good quality, faster, cost-effective)
-- `gpt-4-turbo` - GPT-4 Turbo (high quality, balanced)
-- `gpt-3.5-turbo` - GPT-3.5 Turbo (fastest, cheapest, lower quality)
+For available model options, refer to the [OpenAI API documentation](https://platform.openai.com/docs/models).
 
 ## Development
 
@@ -101,33 +114,3 @@ This will:
 - Run mypy to check for type errors
 
 Configuration is in `pyproject.toml`.
-
-## Architecture
-
-The project follows a modular, service-oriented architecture:
-
-```
-├── main.py                 # Entry point
-├── cli/                    # Command-line interface
-│   └── commands.py         # CLI commands and orchestration
-├── services/               # Business logic
-│   ├── flow_service.py     # Flow data loading
-│   ├── ai_service.py       # AI-powered analysis
-│   └── report_service.py   # Report generation
-└── flow_types/             # Type definitions
-    ├── api_models.py       # Pydantic models
-    └── flow_types.py       # Flow data types
-```
-
-### Key Services
-
-1. **`FlowService`**: Loads and parses flow.json files
-2. **`AIService`**: AI-powered analysis (interactions, summaries, images)
-3. **`ReportService`**: Generates markdown reports
-
-## Security
-
-⚠️ **Never commit your API key!** The `.gitignore` file is configured to exclude:
-- `.env` files
-- Generated output files
-

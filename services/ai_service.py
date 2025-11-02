@@ -21,6 +21,7 @@ class AIService:
     DEFAULT_CHUNK_PROCESSING_MODEL = "gpt-5-mini"
     DEFAULT_SUMMARY_MODEL = "gpt-5"
     DEFAULT_IMAGE_MODEL = "gpt-image-1"
+    DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
 
     def __init__(
         self,
@@ -29,6 +30,7 @@ class AIService:
         chunk_processing_model: str | None = None,
         summary_model: str | None = None,
         image_model: str | None = None,
+        embedding_model: str | None = None,
         max_interactions_for_summary: int = 50,
     ):
         """
@@ -37,9 +39,10 @@ class AIService:
         Args:
             api_key: OpenAI API key
             max_steps_per_chunk: Maximum number of steps to process per chunk (default: 10)
-            chunk_processing_model: Model for processing individual chunks (default: gpt-4o-mini)
-            summary_model: Model for generating summaries (default: gpt-4o)
+            chunk_processing_model: Model for processing individual chunks (default: gpt-5-mini)
+            summary_model: Model for generating summaries (default: gpt-5)
             image_model: Model for generating images (default: gpt-image-1, only gpt-image-1 is supported)
+            embedding_model: Model for generating embeddings (default: text-embedding-3-small)
             max_interactions_for_summary: Maximum number of interactions to use for summary generation (default: 50)
 
         Raises:
@@ -50,11 +53,10 @@ class AIService:
         self.max_interactions_for_summary = max_interactions_for_summary
 
         # Use provided models or fall back to defaults
-        self.chunk_processing_model = (
-            chunk_processing_model or self.DEFAULT_CHUNK_PROCESSING_MODEL
-        )
+        self.chunk_processing_model = chunk_processing_model or self.DEFAULT_CHUNK_PROCESSING_MODEL
         self.summary_model = summary_model or self.DEFAULT_SUMMARY_MODEL
         self.image_model = image_model or self.DEFAULT_IMAGE_MODEL
+        self.embedding_model = embedding_model or self.DEFAULT_EMBEDDING_MODEL
 
         # Validate image model early
         if self.image_model != "gpt-image-1":
@@ -97,9 +99,7 @@ class AIService:
         # If the flow is small enough, return it as a single chunk
         if len(steps) <= self.max_steps_per_chunk:
             # Create a single chunk with all data
-            chunk_info = ChunkInfo(
-                chunk_index=0, total_chunks=1, steps_in_chunk=len(steps)
-            )
+            chunk_info = ChunkInfo(chunk_index=0, total_chunks=1, steps_in_chunk=len(steps))
             return [
                 FlowChunk(
                     name=flow_data.get("name", "Untitled Flow"),
@@ -113,9 +113,7 @@ class AIService:
             ]
 
         chunks: list[FlowChunk] = []
-        total_chunks = (
-            len(steps) + self.max_steps_per_chunk - 1
-        ) // self.max_steps_per_chunk
+        total_chunks = (len(steps) + self.max_steps_per_chunk - 1) // self.max_steps_per_chunk
 
         # Create metadata that will be included in each chunk
         metadata = FlowMetadata(
@@ -151,9 +149,7 @@ class AIService:
 
         return chunks
 
-    def _process_chunk(
-        self, chunk: FlowChunk, chunk_index: int, total_chunks: int
-    ) -> list[str]:
+    def _process_chunk(self, chunk: FlowChunk, chunk_index: int, total_chunks: int) -> list[str]:
         """
         Process a single chunk of flow data to extract interactions.
 
@@ -198,15 +194,11 @@ class AIService:
 
             content = response.choices[0].message.content
             if content:
-                interactions_response = InteractionsResponse.model_validate_json(
-                    content
-                )
+                interactions_response = InteractionsResponse.model_validate_json(content)
                 return interactions_response.interactions
 
         except Exception as e:
-            click.echo(
-                f"   Warning: Error processing chunk {chunk_index + 1}/{total_chunks}: {e}"
-            )
+            click.echo(f"   Warning: Error processing chunk {chunk_index + 1}/{total_chunks}: {e}")
 
         return []
 
@@ -291,9 +283,7 @@ class AIService:
         try:
             # Embed query + all interactions in one API call
             all_texts = [query_text] + interactions
-            response = self.client.embeddings.create(
-                model="text-embedding-3-small", input=all_texts
-            )
+            response = self.client.embeddings.create(model=self.embedding_model, input=all_texts)
 
             # Extract embeddings
             query_embedding = np.array(response.data[0].embedding)
@@ -304,10 +294,7 @@ class AIService:
                 return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
 
             similarities = np.array(
-                [
-                    cosine_similarity(emb, query_embedding)
-                    for emb in interaction_embeddings
-                ]
+                [cosine_similarity(emb, query_embedding) for emb in interaction_embeddings]
             )
 
             # Apply Maximal Marginal Relevance for diversity
@@ -365,10 +352,7 @@ class AIService:
                 # Diversity component: distance from already selected
                 max_similarity_to_selected = max(
                     np.dot(embeddings[idx], embeddings[sel_idx])
-                    / (
-                        np.linalg.norm(embeddings[idx])
-                        * np.linalg.norm(embeddings[sel_idx])
-                    )
+                    / (np.linalg.norm(embeddings[idx]) * np.linalg.norm(embeddings[sel_idx]))
                     for sel_idx in selected_indices
                 )
                 diversity = 1 - max_similarity_to_selected
@@ -419,9 +403,7 @@ class AIService:
             interactions, max_interactions, flow_data
         )
 
-        click.echo(
-            f"   Selected {len(ranked_interactions)} most meaningful interactions"
-        )
+        click.echo(f"   Selected {len(ranked_interactions)} most meaningful interactions")
         return ranked_interactions
 
     def generate_summary(
@@ -450,9 +432,7 @@ class AIService:
         prompt_template = self._load_prompt("generate_summary")
 
         # Create the prompt for summary generation
-        interactions_text = "\n".join(
-            f"- {interaction}" for interaction in interactions
-        )
+        interactions_text = "\n".join(f"- {interaction}" for interaction in interactions)
         prompt = prompt_template.format(
             flow_name=flow_data.get("name", "Untitled Flow"),
             use_case=flow_data.get("useCase", "unknown"),
@@ -494,9 +474,7 @@ class AIService:
 
         return "Unable to generate summary.", interactions
 
-    def create_social_image(
-        self, flow_data: FlowData, summary: str, output_path: Path
-    ) -> None:
+    def create_social_image(self, flow_data: FlowData, summary: str, output_path: Path) -> None:
         """
         Create a creative social media image representing the flow.
 
