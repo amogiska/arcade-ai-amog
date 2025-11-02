@@ -1,32 +1,16 @@
-Create a vibrant, modern social image in a Soleio-era Dropbox aesthetic.
+Design a colorful, glassmorphic social image (OpenAI aesthetic).
 
 Content
-- Headline: “{flow_name}”
-- Subline: “{summary}”
-- Small badge/pill: “{use_case}”
+- Title: {flow_name}
+- Tag: {use_case}
+- Subline: {summary}
 
-Art Direction
-- Flat, cheerful geometry; generous whitespace; crisp edges
-- Palette: #0061FF (primary), #7FB3FF (accent), #111827 (text), #F8FAFC (bg)
-- Subtle 8–12px soft shadow only for the main block; no heavy gradients
-- Simple vector icon or abstract cut-outs; no photos or device mockups
+Style
+- Vibrant gradient background (cool→warm), soft glow
+- Frosted-glass card(s) with 12–16px blur, 1px inner highlight, subtle shadow
+- Rounded geometry, playful blobs, minimal icons; no photos
+- High contrast typography; large, clean sans-serif
 
 Layout
-- Asymmetric grid with one dominant color block
-- Clear margins: 64px outer, 24px inner paddings
-- Safe area: 5% on all sides
-- Focal hierarchy: Headline > Subline > Badge (top-right or bottom-right)
-
-Typography
-- Inter or system sans; headline semibold, subline medium
-- Headline size ~72–96px (1.3× subline), tight tracking
-- High contrast text on solid fields; max 3–5 lines total
-
-Production
-- Export 1080×1080 and 1920×1080 PNG
-- Provide both solid background (#F8FAFC) and transparent versions
-- Stroke alignment to pixel grid; no raster effects beyond the soft shadow
-
-Do / Don’t
-- DO: Flat color fields, playful but minimal shapes, precise alignment
-- DON’T: Photorealism, skeuomorphism, busy gradients, clip-art
+- Title dominant on frosted card; tag as pill; subline short
+- Clear breathing room; asymmetric balance; strong focal point
