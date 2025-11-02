@@ -54,6 +54,12 @@ load_dotenv()
     default="gpt-4o",
     help="OpenAI model for summary generation (or set SUMMARY_MODEL env variable)",
 )
+@click.option(
+    "--image-model",
+    envvar="IMAGE_MODEL",
+    default="gpt-image-1",
+    help="OpenAI model for image generation (only gpt-image-1 is supported, or set IMAGE_MODEL env variable)",
+)
 def analyze(
     flow_file: Path,
     output: Path,
@@ -62,6 +68,7 @@ def analyze(
     max_steps_per_chunk: int,
     chunk_processing_model: str,
     summary_model: str,
+    image_model: str,
 ) -> None:
     """
     Analyze an Arcade flow.json file and generate a comprehensive report.
@@ -88,11 +95,14 @@ def analyze(
         max_steps_per_chunk=max_steps_per_chunk,
         chunk_processing_model=chunk_processing_model,
         summary_model=summary_model,
+        image_model=image_model,
     )
     report_service = ReportService()
 
     # Display configuration
-    click.echo(f"🤖 Models: chunk={chunk_processing_model}, summary={summary_model}")
+    click.echo(
+        f"🤖 Models: chunk={chunk_processing_model}, summary={summary_model}, image={image_model}"
+    )
 
     # Load flow data
     click.echo("📖 Loading flow data...")
@@ -110,7 +120,6 @@ def analyze(
     # Step 3: Create social media image
     click.echo("\n🎨 Step 3: Creating social media image...")
     ai_service.create_social_image(flow_data, summary, image_output)
-    click.echo(f"   Image saved to: {image_output}")
 
     # Step 4: Generate markdown report
     click.echo("\n📄 Step 4: Generating markdown report...")

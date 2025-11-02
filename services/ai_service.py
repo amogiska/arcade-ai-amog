@@ -8,6 +8,7 @@ import openai
 from flow_types.api_models import InteractionsResponse, SummaryResponse
 from flow_types.chunk_models import ChunkInfo, FlowChunk, FlowMetadata
 from flow_types.flow_types import FlowData
+from services.image_utils import build_image_prompt, save_generated_image
 
 
 class AIService:
@@ -18,6 +19,7 @@ class AIService:
     # Default model configuration
     DEFAULT_CHUNK_PROCESSING_MODEL = "gpt-5-mini"
     DEFAULT_SUMMARY_MODEL = "gpt-5"
+    DEFAULT_IMAGE_MODEL = "gpt-image-1"
 
     def __init__(
         self,
@@ -25,6 +27,7 @@ class AIService:
         max_steps_per_chunk: int = 10,
         chunk_processing_model: str | None = None,
         summary_model: str | None = None,
+        image_model: str | None = None,
     ):
         """
         Initialize the AI service with an OpenAI API key.
@@ -34,13 +37,27 @@ class AIService:
             max_steps_per_chunk: Maximum number of steps to process per chunk (default: 10)
             chunk_processing_model: Model for processing individual chunks (default: gpt-4o-mini)
             summary_model: Model for generating summaries (default: gpt-4o)
+            image_model: Model for generating images (default: gpt-image-1, only gpt-image-1 is supported)
+
+        Raises:
+            ValueError: If image_model is not 'gpt-image-1'
         """
         self.client = openai.OpenAI(api_key=api_key)
         self.max_steps_per_chunk = max_steps_per_chunk
 
         # Use provided models or fall back to defaults
-        self.chunk_processing_model = chunk_processing_model or self.DEFAULT_CHUNK_PROCESSING_MODEL
+        self.chunk_processing_model = (
+            chunk_processing_model or self.DEFAULT_CHUNK_PROCESSING_MODEL
+        )
         self.summary_model = summary_model or self.DEFAULT_SUMMARY_MODEL
+        self.image_model = image_model or self.DEFAULT_IMAGE_MODEL
+
+        # Validate image model early
+        if self.image_model != "gpt-image-1":
+            raise ValueError(
+                f"Only 'gpt-image-1' model is currently supported for image generation. "
+                f"Got: '{self.image_model}'"
+            )
 
     def _load_prompt(self, prompt_name: str) -> str:
         """
@@ -76,7 +93,9 @@ class AIService:
         # If the flow is small enough, return it as a single chunk
         if len(steps) <= self.max_steps_per_chunk:
             # Create a single chunk with all data
-            chunk_info = ChunkInfo(chunk_index=0, total_chunks=1, steps_in_chunk=len(steps))
+            chunk_info = ChunkInfo(
+                chunk_index=0, total_chunks=1, steps_in_chunk=len(steps)
+            )
             return [
                 FlowChunk(
                     name=flow_data.get("name", "Untitled Flow"),
@@ -90,7 +109,9 @@ class AIService:
             ]
 
         chunks: list[FlowChunk] = []
-        total_chunks = (len(steps) + self.max_steps_per_chunk - 1) // self.max_steps_per_chunk
+        total_chunks = (
+            len(steps) + self.max_steps_per_chunk - 1
+        ) // self.max_steps_per_chunk
 
         # Create metadata that will be included in each chunk
         metadata = FlowMetadata(
@@ -126,7 +147,9 @@ class AIService:
 
         return chunks
 
-    def _process_chunk(self, chunk: FlowChunk, chunk_index: int, total_chunks: int) -> list[str]:
+    def _process_chunk(
+        self, chunk: FlowChunk, chunk_index: int, total_chunks: int
+    ) -> list[str]:
         """
         Process a single chunk of flow data to extract interactions.
 
@@ -171,11 +194,15 @@ class AIService:
 
             content = response.choices[0].message.content
             if content:
-                interactions_response = InteractionsResponse.model_validate_json(content)
+                interactions_response = InteractionsResponse.model_validate_json(
+                    content
+                )
                 return interactions_response.interactions
 
         except Exception as e:
-            click.echo(f"   Warning: Error processing chunk {chunk_index + 1}/{total_chunks}: {e}")
+            click.echo(
+                f"   Warning: Error processing chunk {chunk_index + 1}/{total_chunks}: {e}"
+            )
 
         return []
 
@@ -226,7 +253,9 @@ class AIService:
         prompt_template = self._load_prompt("generate_summary")
 
         # Create the prompt for summary generation
-        interactions_text = "\n".join(f"- {interaction}" for interaction in interactions)
+        interactions_text = "\n".join(
+            f"- {interaction}" for interaction in interactions
+        )
         prompt = prompt_template.format(
             flow_name=flow_data.get("name", "Untitled Flow"),
             use_case=flow_data.get("useCase", "unknown"),
@@ -268,15 +297,40 @@ class AIService:
 
         return "Unable to generate summary."
 
-    def create_social_image(self, flow_data: FlowData, summary: str, output_path: Path) -> None:
+    def create_social_image(
+        self, flow_data: FlowData, summary: str, output_path: Path
+    ) -> None:
         """
         Create a creative social media image representing the flow.
+
+        Note: Only gpt-image-1 model is supported (validated at initialization).
 
         Args:
             flow_data: The parsed flow.json data
             summary: The generated summary text
             output_path: Where to save the generated image
         """
-        # TODO: Implement social media image generation
-        # Use DALL-E or similar to create an engaging image
-        pass
+        flow_name = flow_data.get("name", "Untitled Flow")
+        use_case = flow_data.get("useCase", "unknown")
+
+        # Load the prompt template and build the image generation prompt
+        prompt_template = self._load_prompt("generate_image")
+        image_prompt = build_image_prompt(prompt_template, flow_name, use_case, summary)
+
+        try:
+            click.echo("   Generating social media image...")
+
+            # Generate the image using OpenAI's image generation API (gpt-image-1)
+            # Note: gpt-image-1 returns base64 encoded images by default
+            response = self.client.images.generate(
+                model=self.image_model,
+                prompt=image_prompt,
+                n=1,
+                size="1024x1024",
+            )
+
+            # Save the generated image
+            save_generated_image(response.data, output_path)
+
+        except Exception as e:
+            click.echo(f"   Warning: Could not generate image: {e}")
