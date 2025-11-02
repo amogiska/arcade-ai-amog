@@ -14,9 +14,8 @@ Art Direction
 - Type: huge high-contrast sans; tight tracking; strong hierarchy.
 
 Layout
-- Tag pill removed.
 - Title on the hero card (1–2 lines). Subline directly below (1 line preferred).
 - 10–12% safe margins; generous negative space; zero clutter.
 
 Output
-- PNG 2048×2048 primary; also 1920×1080 and 2048×2560.
+- PNG 2048×2048 primary

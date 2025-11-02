@@ -4,6 +4,10 @@ CLI tool to analyze Arcade flow recordings and generate comprehensive report and
 
 **Example output files from a sample run ([`report.md`](report.md) and [`flow_image.png`](flow_image.png)) are included in this repository.**
 
+<p align="center">
+  <img src="flow_image.png" alt="Example Generated Image" width="400">
+</p>
+
 ## Approach
 
 This tool achieves three key goals while maintaining scalability:
