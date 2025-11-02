@@ -1,6 +1,8 @@
 # Arcade AI Interview Challenge
 
-CLI tool to analyze Arcade flow recordings and generate comprehensive reports.
+CLI tool to analyze Arcade flow recordings and generate comprehensive report and social media image.
+
+**Example output files from a sample run (`report.md` and `flow_image.png`) are included in this repository.**
 
 ## Approach
 
@@ -39,10 +41,14 @@ This tool achieves three key goals while maintaining scalability:
 
 ## Usage
 
-Basic usage (uses default `flow.json` and outputs to `report.md`):
+Basic usage (analyzes `flow.json` and generates `report.md` and `flow_image.png`):
 ```bash
 uv run main.py
 ```
+
+This will generate:
+- **`report.md`** - Markdown report with summary and all user interactions
+- **`flow_image.png`** - AI-generated social media image (1024x1024 PNG)
 
 With custom options:
 ```bash
